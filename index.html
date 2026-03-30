@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="My CRM">
+    <meta name="theme-color" content="#0066ff">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Personal CRM - Contact Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* iOS Safe Area Support */
+        @supports(padding: max(0px)) {
+            .sidebar-header {
+                padding-top: max(20px, env(safe-area-inset-top));
+            }
+            
+            .contact-header {
+                padding-top: max(25px, env(safe-area-inset-top));
+            }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #e1e8ed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                display: none;
+            }
+            
+            .sidebar.mobile-visible {
+                display: flex;
+            }
+            
+            .main-content {
+                display: none;
+            }
+            
+            .main-content.mobile-visible {
+                display: flex;
+            }
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .sidebar-header h1 {
+            font-size: 24px;
+            color: #1a1a1a;
+            margin-bottom: 15px;
+        }
+
+        .add-contact-btn {
+            width: 100%;
+            padding: 12px;
+            background: #0066ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-contact-btn:active {
+            background: #0052cc;
+            transform: scale(0.98);
+        }
+
+        .search-box {
+            padding: 15px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .contacts-list {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .contact-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .contact-item:active {
+            background: #f8f9fa;
+        }
+
+        .contact-item.active {
+            background: #e3f2fd;
+            border-left: 3px solid #0066ff;
+        }
+
+        .contact-item.has-reminder {
+            border-left: 3px solid #ff9800;
+        }
+
+        .contact-item.has-reminder.active {
+            border-left: 3px solid #0066ff;
+            background: linear-gradient(to right, #fff3e0 0%, #e3f2fd 100%);
+        }
+
+        .contact-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .contact-preview {
+            font-size: 13px;
+            color: #657786;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .todo-badge {
+            display: inline-block;
+            background: #ff5722;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .reminder-date {
+            font-size: 12px;
+            color: #ff9800;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 8px;
+            height: 8px;
+            background: #ff5722;
+            border-radius: 50%;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .back-button {
+            display: none;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .back-button {
+                display: inline-block;
+            }
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #657786;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .contact-detail {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .contact-detail.active {
+            display: flex;
+        }
+
+        .contact-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid #e1e8ed;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .contact-header h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header-btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+
+        .reminder-info {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .thread-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 25px 30px;
+            background: #fafbfc;
+        }
+
+        .thread-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0066ff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .thread-date {
+            font-size: 12px;
+            color: #657786;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .thread-content {
+            color: #1a1a1a;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .add-entry-container {
+            padding: 25px 30px;
+            border-top: 1px solid #e1e8ed;
+            background: white;
+        }
+
+        .add-entry-container textarea {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 12px;
+        }
+
+        .add-entry-container textarea:focus {
+            outline: none;
+            border-color: #0066ff;
+        }
+
+        .add-entry-btn {
+            padding: 12px 24px;
+            background: #0066ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-entry-btn:active {
+            background: #0052cc;
+            transform: scale(0.98);
+        }
+
+        .delete-contact-btn {
+            padding: 8px 16px;
+            background: rgba(244, 67, 54, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .delete-contact-btn:active {
+            background: rgba(244, 67, 54, 0.4);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #1a1a1a;
+        }
+
+        .modal-content input,
+        .modal-content textarea,
+        .modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .modal-content input:focus,
+        .modal-content textarea:focus,
+        .modal-content select:focus {
+            outline: none;
+            border-color: #0066ff;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.primary {
+            background: #0066ff;
+            color: white;
+        }
+
+        .modal-btn.primary:active {
+            background: #0052cc;
+            transform: scale(0.98);
+        }
+
+        .modal-btn.secondary {
+            background: #f0f0f0;
+            color: #1a1a1a;
+        }
+
+        .modal-btn.secondary:active {
+            background: #e0e0e0;
+        }
+
+        .stats {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1e8ed;
+            font-size: 13px;
+            color: #657786;
+        }
+
+        .no-contacts {
+            padding: 40px 20px;
+            text-align: center;
+            color: #657786;
+        }
+
+        .notification-settings {
+            padding: 15px 20px;
+            background: #fff3cd;
+            border-bottom: 2px solid #ffc107;
+            font-size: 13px;
+            color: #856404;
+            display: none;
+        }
+
+        .notification-settings.show {
+            display: block;
+        }
+
+        .notification-settings button {
+            background: #ffc107;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .install-prompt {
+            padding: 15px 20px;
+            background: #e3f2fd;
+            border-bottom: 2px solid #2196f3;
+            font-size: 13px;
+            color: #0d47a1;
+            display: none;
+        }
+
+        .install-prompt.show {
+            display: block;
+        }
+
+        .install-prompt button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .sound-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .sound-option input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        label {
+            font-size: 14px;
+            color: #657786;
+            display: block;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar mobile-visible" id="sidebar">
+            <div class="install-prompt" id="installPrompt">
+                <strong>📱 Install as App</strong>
+                <p>Add this to your home screen for a better experience!</p>
+                <button onclick="showInstallInstructions()">Show Instructions</button>
+            </div>
+
+            <div class="notification-settings" id="notificationSettings">
+                <strong>🔔 Enable Notifications</strong>
+                <p>Get reminded when follow-ups are due!</p>
+                <button onclick="requestNotificationPermission()">Enable Notifications</button>
+            </div>
+
+            <div class="sidebar-header">
+                <h1>My CRM</h1>
+                <button class="add-contact-btn" onclick="showAddContactModal()">+ Add New Contact</button>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search contacts..." oninput="filterContacts()">
+            </div>
+
+            <div class="stats" id="statsContainer">
+                0 contacts
+            </div>
+
+            <div class="contacts-list" id="contactsList">
+                <div class="no-contacts">No contacts yet. Add your first contact to get started!</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <div class="empty-state" id="emptyState">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p>Select a contact to view details</p>
+            </div>
+
+            <div class="contact-detail" id="contactDetail">
+                <div class="contact-header">
+                    <button class="back-button" onclick="goBackToList()">← Back</button>
+                    <h2 id="contactDetailName"></h2>
+                    <div class="header-actions">
+                        <button class="header-btn" onclick="showReminderModal()">⏰ Set Reminder</button>
+                        <button class="header-btn" onclick="clearReminder()">🗑️ Clear Reminder</button>
+                        <button class="delete-contact-btn" onclick="deleteCurrentContact()">Delete Contact</button>
+                    </div>
+                    <div class="reminder-info" id="reminderInfo" style="display: none;"></div>
+                </div>
+
+                <div class="thread-container" id="threadContainer">
+                    <p style="color: #657786; text-align: center; padding: 40px;">No conversation history yet. Add your first entry below!</p>
+                </div>
+
+                <div class="add-entry-container">
+                    <textarea id="newEntryText" placeholder="Add a new note, progress update, or conversation..."></textarea>
+                    <button class="add-entry-btn" onclick="addEntry()">Add Entry</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="modal" id="addContactModal">
+        <div class="modal-content">
+            <h3>Add New Contact</h3>
+            <input type="text" id="newContactName" placeholder="Contact Name" maxlength="100">
+            <input type="text" id="newContactInfo" placeholder="Email, Phone, or Company (optional)">
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeAddContactModal()">Cancel</button>
+                <button class="modal-btn primary" onclick="addContact()">Add Contact</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reminder Modal -->
+    <div class="modal" id="reminderModal">
+        <div class="modal-content">
+            <h3>Set Reminder</h3>
+            <label>Reminder Date</label>
+            <input type="date" id="reminderDate">
+            
+            <label>Reminder Time</label>
+            <input type="time" id="reminderTime" value="09:00">
+            
+            <label>Notification Sound</label>
+            <select id="notificationSound">
+                <option value="default">Default Notification</option>
+                <option value="urgent">Urgent (3 beeps)</option>
+                <option value="gentle">Gentle Chime</option>
+                <option value="silent">Silent (Visual Only)</option>
+            </select>
+
+            <div class="sound-option">
+                <input type="checkbox" id="repeatNotification">
+                <label for="repeatNotification" style="margin: 0;">Repeat notification every hour until dismissed</label>
+            </div>
+            
+            <label>Note (optional)</label>
+            <textarea id="reminderNote" placeholder="Why are you following up?" rows="3"></textarea>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeReminderModal()">Cancel</button>
+                <button class="modal-btn primary" onclick="setReminder()">Set Reminder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Install Instructions Modal -->
+    <div class="modal" id="installModal">
+        <div class="modal-content">
+            <h3>📱 Install as App</h3>
+            <div style="line-height: 1.8; color: #1a1a1a;">
+                <p><strong>On iPhone/iPad (Safari):</strong></p>
+                <ol style="margin: 10px 0 20px 20px;">
+                    <li>Tap the <strong>Share</strong> button (square with arrow)</li>
+                    <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                    <li>Tap <strong>"Add"</strong> in the top right</li>
+                    <li>The app will appear on your home screen!</li>
+                </ol>
+                
+                <p><strong>On Android (Chrome):</strong></p>
+                <ol style="margin: 10px 0 20px 20px;">
+                    <li>Tap the <strong>three dots</strong> menu</li>
+                    <li>Tap <strong>"Add to Home screen"</strong></li>
+                    <li>Tap <strong>"Add"</strong></li>
+                </ol>
+                
+                <p style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 6px; font-size: 13px;">
+                    ℹ️ Once installed, you'll get push notifications for reminders even when the app is closed!
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn primary" onclick="closeInstallModal()">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let contacts = [];
+        let currentContactId = null;
+        let notificationPermission = 'default';
+        let registeredNotifications = [];
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(registration => {
+                    console.log('Service Worker registered:', registration);
+                })
+                .catch(error => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
+
+        // Check for notification support
+        function checkNotificationSupport() {
+            if (!('Notification' in window)) {
+                console.log('Notifications not supported');
+                return false;
+            }
+            
+            notificationPermission = Notification.permission;
+            
+            if (notificationPermission === 'default') {
+                document.getElementById('notificationSettings').classList.add('show');
+            }
+            
+            return true;
+        }
+
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                alert('Notifications are not supported on this device');
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                notificationPermission = permission;
+                
+                if (permission === 'granted') {
+                    document.getElementById('notificationSettings').classList.remove('show');
+                    showNotification('Notifications Enabled! 🎉', 'You\'ll now receive reminders for your follow-ups.');
+                    scheduleAllNotifications();
+                } else {
+                    alert('Notifications were denied. You can enable them in your browser settings.');
+                }
+            } catch (error) {
+                console.error('Error requesting notification permission:', error);
+            }
+        }
+
+        // Show a notification
+        function showNotification(title, body, tag = 'crm-notification') {
+            if (notificationPermission !== 'granted') return;
+
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_NOTIFICATION',
+                    title: title,
+                    body: body,
+                    tag: tag
+                });
+            } else {
+                // Fallback for browsers without service worker
+                new Notification(title, {
+                    body: body,
+                    icon: 'icon-192.png',
+                    badge: 'icon-192.png',
+                    tag: tag,
+                    vibrate: [200, 100, 200]
+                });
+            }
+        }
+
+        // Schedule notifications for all reminders
+        function scheduleAllNotifications() {
+            // Clear existing scheduled notifications
+            registeredNotifications.forEach(id => clearTimeout(id));
+            registeredNotifications = [];
+
+            contacts.forEach(contact => {
+                if (contact.reminderDate && contact.reminderTime) {
+                    scheduleNotification(contact);
+                }
+            });
+        }
+
+        // Schedule a single notification
+        function scheduleNotification(contact) {
+            const reminderDateTime = new Date(`${contact.reminderDate}T${contact.reminderTime}`);
+            const now = new Date();
+            const timeUntilReminder = reminderDateTime - now;
+
+            if (timeUntilReminder > 0) {
+                const timeoutId = setTimeout(() => {
+                    const soundType = contact.notificationSound || 'default';
+                    playNotificationSound(soundType);
+                    
+                    showNotification(
+                        `Follow up: ${contact.name}`,
+                        contact.reminderNote || 'Time to follow up with this contact!',
+                        `reminder-${contact.id}`
+                    );
+
+                    // If repeat is enabled, schedule next notification
+                    if (contact.repeatNotification) {
+                        const repeatId = setInterval(() => {
+                            playNotificationSound(soundType);
+                            showNotification(
+                                `⏰ Reminder: ${contact.name}`,
+                                contact.reminderNote || 'Time to follow up with this contact!',
+                                `reminder-${contact.id}`
+                            );
+                        }, 3600000); // Every hour
+                        
+                        // Store the interval ID
+                        contact.repeatIntervalId = repeatId;
+                        saveData();
+                    }
+
+                    // Mark as due
+                    contact.isReminderDue = true;
+                    saveData();
+                    checkReminders();
+                    renderContacts();
+                }, timeUntilReminder);
+
+                registeredNotifications.push(timeoutId);
+            }
+        }
+
+        // Play notification sound
+        function playNotificationSound(type) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            switch(type) {
+                case 'urgent':
+                    playUrgentSound(audioContext);
+                    break;
+                case 'gentle':
+                    playGentleSound(audioContext);
+                    break;
+                case 'default':
+                    playDefaultSound(audioContext);
+                    break;
+                case 'silent':
+                    // Vibrate only if available
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate([200, 100, 200, 100, 200]);
+                    }
+                    break;
+            }
+        }
+
+        function playDefaultSound(audioContext) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        function playUrgentSound(audioContext) {
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = 1000;
+                    oscillator.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.2);
+                }, i * 300);
+            }
+        }
+
+        function playGentleSound(audioContext) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 523.25; // C5
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 1);
+        }
+
+        // Show install instructions
+        function showInstallInstructions() {
+            document.getElementById('installModal').classList.add('active');
+        }
+
+        function closeInstallModal() {
+            document.getElementById('installModal').classList.remove('active');
+            document.getElementById('installPrompt').classList.remove('show');
+        }
+
+        // Mobile navigation
+        function goBackToList() {
+            document.getElementById('sidebar').classList.add('mobile-visible');
+            document.getElementById('mainContent').classList.remove('mobile-visible');
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const saved = localStorage.getItem('crmData');
+            if (saved) {
+                contacts = JSON.parse(saved);
+            }
+            checkReminders();
+            renderContacts();
+            scheduleAllNotifications();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('crmData', JSON.stringify(contacts));
+        }
+
+        // Check and sort reminders
+        function checkReminders() {
+            const now = new Date();
+            
+            contacts.forEach(contact => {
+                if (contact.reminderDate && contact.reminderTime) {
+                    const reminderDateTime = new Date(`${contact.reminderDate}T${contact.reminderTime}`);
+                    contact.isReminderDue = reminderDateTime <= now;
+                }
+            });
+
+            // Sort: reminders due first, then alphabetically
+            contacts.sort((a, b) => {
+                if (a.isReminderDue && !b.isReminderDue) return -1;
+                if (!a.isReminderDue && b.isReminderDue) return 1;
+                return a.name.localeCompare(b.name);
+            });
+        }
+
+        // Render contacts list
+        function renderContacts() {
+            const container = document.getElementById('contactsList');
+            const statsContainer = document.getElementById('statsContainer');
+            
+            if (contacts.length === 0) {
+                container.innerHTML = '<div class="no-contacts">No contacts yet. Add your first contact to get started!</div>';
+                statsContainer.textContent = '0 contacts';
+                return;
+            }
+
+            const reminderCount = contacts.filter(c => c.isReminderDue).length;
+            statsContainer.textContent = `${contacts.length} contact${contacts.length !== 1 ? 's' : ''}${reminderCount > 0 ? ` • ${reminderCount} reminder${reminderCount !== 1 ? 's' : ''} due` : ''}`;
+
+            container.innerHTML = contacts.map(contact => {
+                const lastEntry = contact.thread.length > 0 ? contact.thread[contact.thread.length - 1].content : 'No entries yet';
+                const preview = lastEntry.substring(0, 60) + (lastEntry.length > 60 ? '...' : '');
+                
+                return `
+                    <div class="contact-item ${contact.id === currentContactId ? 'active' : ''} ${contact.reminderDate ? 'has-reminder' : ''}" 
+                         onclick="selectContact(${contact.id})">
+                        ${contact.isReminderDue ? '<div class="notification-badge"></div>' : ''}
+                        <div class="contact-name">
+                            ${contact.name}
+                            ${contact.isReminderDue ? '<span class="todo-badge">TO DO</span>' : ''}
+                        </div>
+                        <div class="contact-preview">${preview}</div>
+                        ${contact.reminderDate ? `<div class="reminder-date">📅 ${formatDate(contact.reminderDate)} ${contact.reminderTime ? 'at ' + formatTime(contact.reminderTime) : ''}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Filter contacts
+        function filterContacts() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.querySelectorAll('.contact-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.contact-name').textContent.toLowerCase();
+                item.style.display = name.includes(search) ? 'block' : 'none';
+            });
+        }
+
+        // Show add contact modal
+        function showAddContactModal() {
+            document.getElementById('addContactModal').classList.add('active');
+            document.getElementById('newContactName').value = '';
+            document.getElementById('newContactInfo').value = '';
+            setTimeout(() => document.getElementById('newContactName').focus(), 100);
+        }
+
+        // Close add contact modal
+        function closeAddContactModal() {
+            document.getElementById('addContactModal').classList.remove('active');
+        }
+
+        // Add new contact
+        function addContact() {
+            const name = document.getElementById('newContactName').value.trim();
+            
+            if (!name) {
+                alert('Please enter a contact name');
+                return;
+            }
+
+            if (contacts.length >= 100) {
+                alert('Maximum limit of 100 contacts reached');
+                return;
+            }
+
+            const newContact = {
+                id: Date.now(),
+                name: name,
+                info: document.getElementById('newContactInfo').value.trim(),
+                thread: [],
+                reminderDate: null,
+                reminderTime: null,
+                reminderNote: '',
+                notificationSound: 'default',
+                repeatNotification: false,
+                isReminderDue: false,
+                createdAt: new Date().toISOString()
+            };
+
+            contacts.push(newContact);
+            saveData();
+            checkReminders();
+            renderContacts();
+            closeAddContactModal();
+            selectContact(newContact.id);
+        }
+
+        // Select contact
+        function selectContact(id) {
+            currentContactId = id;
+            const contact = contacts.find(c => c.id === id);
+            
+            if (!contact) return;
+
+            // Mobile: hide sidebar, show detail
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('mobile-visible');
+                document.getElementById('mainContent').classList.add('mobile-visible');
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('contactDetail').classList.add('active');
+            document.getElementById('contactDetailName').textContent = contact.name;
+            document.getElementById('newEntryText').value = '';
+
+            // Show reminder info
+            const reminderInfo = document.getElementById('reminderInfo');
+            if (contact.reminderDate) {
+                reminderInfo.style.display = 'block';
+                reminderInfo.innerHTML = `
+                    <strong>Reminder set for:</strong> ${formatDate(contact.reminderDate)} ${contact.reminderTime ? 'at ' + formatTime(contact.reminderTime) : ''}
+                    ${contact.reminderNote ? `<br><strong>Note:</strong> ${contact.reminderNote}` : ''}
+                    ${contact.notificationSound !== 'default' ? `<br><strong>Sound:</strong> ${contact.notificationSound}` : ''}
+                `;
+            } else {
+                reminderInfo.style.display = 'none';
+            }
+
+            // Render thread
+            renderThread(contact);
+            renderContacts();
+        }
+
+        // Render thread
+        function renderThread(contact) {
+            const container = document.getElementById('threadContainer');
+            
+            if (contact.thread.length === 0) {
+                container.innerHTML = '<p style="color: #657786; text-align: center; padding: 40px;">No conversation history yet. Add your first entry below!</p>';
+                return;
+            }
+
+            container.innerHTML = contact.thread
+                .slice()
+                .reverse()
+                .map(entry => `
+                    <div class="thread-item">
+                        <div class="thread-date">${formatDateTime(entry.timestamp)}</div>
+                        <div class="thread-content">${escapeHtml(entry.content)}</div>
+                    </div>
+                `).join('');
+        }
+
+        // Add entry
+        function addEntry() {
+            const content = document.getElementById('newEntryText').value.trim();
+            
+            if (!content) {
+                alert('Please enter some content');
+                return;
+            }
+
+            const contact = contacts.find(c => c.id === currentContactId);
+            if (!contact) return;
+
+            contact.thread.push({
+                timestamp: new Date().toISOString(),
+                content: content
+            });
+
+            saveData();
+            renderThread(contact);
+            renderContacts();
+            document.getElementById('newEntryText').value = '';
+        }
+
+        // Show reminder modal
+        function showReminderModal() {
+            const contact = contacts.find(c => c.id === currentContactId);
+            if (!contact) return;
+
+            document.getElementById('reminderModal').classList.add('active');
+            document.getElementById('reminderDate').value = contact.reminderDate || '';
+            document.getElementById('reminderTime').value = contact.reminderTime || '09:00';
+            document.getElementById('reminderNote').value = contact.reminderNote || '';
+            document.getElementById('notificationSound').value = contact.notificationSound || 'default';
+            document.getElementById('repeatNotification').checked = contact.repeatNotification || false;
+            
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reminderDate').min = today;
+        }
+
+        // Close reminder modal
+        function closeReminderModal() {
+            document.getElementById('reminderModal').classList.remove('active');
+        }
+
+        // Set reminder
+        function setReminder() {
+            const date = document.getElementById('reminderDate').value;
+            const time = document.getElementById('reminderTime').value;
+            
+            if (!date) {
+                alert('Please select a date');
+                return;
+            }
+
+            const contact = contacts.find(c => c.id === currentContactId);
+            if (!contact) return;
+
+            // Clear any existing repeat interval
+            if (contact.repeatIntervalId) {
+                clearInterval(contact.repeatIntervalId);
+            }
+
+            contact.reminderDate = date;
+            contact.reminderTime = time;
+            contact.reminderNote = document.getElementById('reminderNote').value.trim();
+            contact.notificationSound = document.getElementById('notificationSound').value;
+            contact.repeatNotification = document.getElementById('repeatNotification').checked;
+            
+            saveData();
+            checkReminders();
+            scheduleAllNotifications();
+            renderContacts();
+            selectContact(currentContactId);
+            closeReminderModal();
+
+            if (notificationPermission === 'granted') {
+                showNotification('Reminder Set! ✅', `You'll be reminded about ${contact.name} on ${formatDate(date)} at ${formatTime(time)}`);
+            }
+        }
+
+        // Clear reminder
+        function clearReminder() {
+            const contact = contacts.find(c => c.id === currentContactId);
+            if (!contact) return;
+
+            if (!contact.reminderDate) {
+                alert('No reminder set for this contact');
+                return;
+            }
+
+            if (confirm('Are you sure you want to clear the reminder?')) {
+                // Clear any existing repeat interval
+                if (contact.repeatIntervalId) {
+                    clearInterval(contact.repeatIntervalId);
+                }
+
+                contact.reminderDate = null;
+                contact.reminderTime = null;
+                contact.reminderNote = '';
+                contact.notificationSound = 'default';
+                contact.repeatNotification = false;
+                contact.isReminderDue = false;
+                
+                saveData();
+                checkReminders();
+                scheduleAllNotifications();
+                renderContacts();
+                selectContact(currentContactId);
+            }
+        }
+
+        // Delete current contact
+        function deleteCurrentContact() {
+            const contact = contacts.find(c => c.id === currentContactId);
+            if (!contact) return;
+
+            if (confirm(`Are you sure you want to delete ${contact.name}? This will remove all conversation history.`)) {
+                // Clear any existing repeat interval
+                if (contact.repeatIntervalId) {
+                    clearInterval(contact.repeatIntervalId);
+                }
+
+                contacts = contacts.filter(c => c.id !== currentContactId);
+                saveData();
+                checkReminders();
+                scheduleAllNotifications();
+                renderContacts();
+                
+                if (window.innerWidth <= 768) {
+                    goBackToList();
+                }
+                
+                document.getElementById('emptyState').style.display = 'flex';
+                document.getElementById('contactDetail').classList.remove('active');
+                currentContactId = null;
+            }
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const targetDate = new Date(date);
+            targetDate.setHours(0, 0, 0, 0);
+            
+            const diffTime = targetDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Tomorrow';
+            if (diffDays === -1) return 'Yesterday';
+            if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
+            if (diffDays < 7) return `In ${diffDays} days`;
+            
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // Format time
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        // Format date and time
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check if app is installed (standalone mode)
+        function checkIfInstalled() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                              || window.navigator.standalone 
+                              || document.referrer.includes('android-app://');
+            
+            if (!isStandalone && !localStorage.getItem('installPromptDismissed')) {
+                document.getElementById('installPrompt').classList.add('show');
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            checkNotificationSupport();
+            checkIfInstalled();
+
+            // Check reminders every minute
+            setInterval(() => {
+                checkReminders();
+                renderContacts();
+            }, 60000);
+
+            // Handle keyboard shortcuts
+            document.getElementById('newContactName').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addContact();
+            });
+
+            document.getElementById('newEntryText').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    addEntry();
+                }
+            });
+
+            // Handle visibility change (app coming to foreground)
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    checkReminders();
+                    renderContacts();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
